@@ -35,6 +35,8 @@ public class RestRequest: NSObject  {
             let config = URLSessionConfiguration.default
             config.requestCachePolicy = .reloadIgnoringLocalCacheData
             session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
+        } else if clientCertificate != nil {
+            session = URLSession(configuration: URLSessionConfiguration.default, delegate: self, delegateQueue: .main)
         }
         return session
     }
@@ -925,7 +927,7 @@ extension RestRequest: URLSessionDelegate {
                 fallthrough
             }
             // Get the bundle path from the Certificates directory for a certificate that matches clientCertificateName's name
-            if let path = Bundle.path(forResource: certificateName, ofType: "der", inDirectory: certificatePath) {
+            if let path = Bundle.path(forResource: certificateName, ofType: nil, inDirectory: certificatePath) {
                 // Read the certificate data from disk
                 if let key = NSData(base64Encoded: path) {
                     // Create a secure certificate from the NSData
@@ -938,8 +940,14 @@ extension RestRequest: URLSessionDelegate {
                             fallthrough
                         }
                         completionHandler(.useCredential, URLCredential(identity: id, certificates: [certificate], persistence: .forSession))
+                    } else {
+                        Log.warning("Certificate at '\(path)' was rejected by SecCertificateCreateWithData")
                     }
+                } else {
+                    Log.warning("Unable to load client certificate from path '\(path)'")
                 }
+            } else {
+                Log.warning("Unable to find certificate \(certificateName) in path \(certificatePath)")
             }
             #else
             Log.warning(warning)
