@@ -24,6 +24,9 @@ let insecureUrl = "http://localhost:8080/"
 /// URL for a well-known server that provides a valid TLS certificate.
 let sslValidCertificateURL = "https://www.google.com"
 
+/// URL for a service that validates a client certificate.
+let sslValidClientCertURL = "https://client.badssl.com/"
+
 // MARK: Helper structs
 
 // The following structs duplicate the types contained within the TestServer
@@ -194,9 +197,13 @@ class SwiftyRequestTests: XCTestCase {
     func testGetClientCert() {
         #if os(macOS)
         let expectation = self.expectation(description: "Data Echoed Back")
-        let testClientCertificate = ClientCertificate(name: "server.csr", path: "Tests/SwiftyRequestTests/Certificates")
+        guard let lastIndex = #file.lastIndex(of: "/") else {
+            return XCTFail("Could not get source path")
+        }
+        let testSourcePath = #file.prefix(upTo: lastIndex)
+        let testClientCertificate = ClientCertificate(name: "badssl.com-client.pem", path: testSourcePath + "/Certificates")
         
-        let request = RestRequest(method: .get, url: jsonURL, containsSelfSignedCert: true, clientCertificate: testClientCertificate)
+        let request = RestRequest(method: .get, url: sslValidClientCertURL, /*containsSelfSignedCert: true,*/ clientCertificate: testClientCertificate)
         
         request.responseData { response in
             switch response.result {
