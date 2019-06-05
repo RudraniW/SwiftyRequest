@@ -14,11 +14,11 @@ import CircuitBreaker
 /// trusting self-signed certificates. An example of how to do this can be
 /// found under linux/before_tests.sh
 let echoURL = "http://localhost:8080/echoJSON"
-let echoURLSecure = "http://localhost:8443/ssl/echoJSON"
-let jsonURL = "http://localhost:8443/ssl/json"
-let jsonArrayURL = "http://localhost:8443/ssl/jsonArray"
-let templatedJsonURL = "http://localhost:8443/ssl/json/{name}/{city}/"
-let friendsURL = "http://localhost:8443/ssl/friends"
+let echoURLSecure = "https://localhost:8443/ssl/echoJSON"
+let jsonURL = "https://localhost:8443/ssl/json"
+let jsonArrayURL = "https://localhost:8443/ssl/jsonArray"
+let templatedJsonURL = "https://localhost:8443/ssl/json/{name}/{city}/"
+let friendsURL = "https://localhost:8443/ssl/friends"
 let insecureUrl = "http://localhost:8080/"
 
 /// URL for a well-known server that provides a valid TLS certificate.
@@ -368,7 +368,6 @@ class SwiftyRequestTests: XCTestCase {
         guard let request1 = try? RestRequest(url:jsonURL, containsSelfSignedCert: true) else {
             return XCTFail("Invalid URL")
         }
-        request1.credentials = .apiKey
 
         request1.responseString() { response in
             switch response {

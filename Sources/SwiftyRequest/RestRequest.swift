@@ -20,6 +20,7 @@ import LoggerAPI
 import NIOHTTPClient
 import NIO
 import NIOHTTP1
+import NIOSSL
 
 /// Object containing everything needed to build and execute HTTP requests.
 public class RestRequest {
@@ -32,11 +33,9 @@ public class RestRequest {
     private let isSecure: Bool
     private let isSelfSigned: Bool
     
-//    // The client certificate for 2-way SSL
-//    private let clientCertificate: ClientCertificate?
 
-    /// A default `URLSession` instance.
-    private var session: HTTPClient = HTTPClient(eventLoopGroupProvider: .createNew)
+    /// A default `HTTPClient` instance.
+    private var session: HTTPClient
 
     // The HTTP Request
     private var request: HTTPClient.Request
@@ -54,8 +53,7 @@ public class RestRequest {
     ///                                           maxFailures: 2,
     ///                                           fallback: breakFallback)
     ///
-    /// let request = RestRequest(method: .get, url: "http://myApiCall/hello")
-    /// request.credentials = .apiKey,
+    /// let request = RestRequest(method: .GET, url: "http://myApiCall/hello")
     /// request.circuitParameters = circuitParameters
     /// ```
     public var circuitParameters: CircuitParameters<String>? = nil {
@@ -85,7 +83,7 @@ public class RestRequest {
     ///
     /// ### Usage Example: ###
     /// ```swift
-    /// request.method = .put
+    /// request.method = .PUT
     /// ```
     public var method: HTTPMethod {
         get {
@@ -104,38 +102,37 @@ public class RestRequest {
     /// authenticate with are passed in.
     ///
     /// ```swift
-    /// let request = RestRequest(url: apiURL)
-    /// request.credentials = .apiKey
+    /// let request = RestRequest(url: "http://localhost:8080")
+    /// request.credentials = .basicAuthentication(username: "Hello", password: "World")
     /// ```
     public var credentials: Credentials? {
         didSet {
             // set the request's authentication credentials
             if let credentials = credentials {
-                switch credentials {
-                case .apiKey: break
-                case .bearerAuthentication(let token):
-                    request.headers.replaceOrAdd(name: "Authorization", value: "Bearer \(token)")
-                case .basicAuthentication(let username, let password):
-                    let authData = (username + ":" + password).data(using: .utf8)!
-                    let authString = authData.base64EncodedString()
-                    request.headers.replaceOrAdd(name: "Authorization", value: "Basic \(authString)")
-                }
+                request.headers.replaceOrAdd(name: "Authorization", value: credentials.authheader)
+//                switch credentials {
+//                case .apiKey: break
+//                case .bearerAuthentication(let token):
+//                    request.headers.replaceOrAdd(name: "Authorization", value: "Bearer \(token)")
+//                case .basicAuthentication(let username, let password):
+//                    let authData = (username + ":" + password).data(using: .utf8)!
+//                    let authString = authData.base64EncodedString()
+//                    request.headers.replaceOrAdd(name: "Authorization", value: "Basic \(authString)")
+//                }
             } else {
-                request.headers.remove(name: "https://swift.org")
+                request.headers.remove(name: "Authorization")
             }
         }
     }
 
     /// The HTTP header fields which form the header section of the request message.
     ///
-    /// Header fields are colon-separated key-value pairs in string format.  Existing header fields which are not one of the
-    /// four`RestRequest` supported headers ("Authorization", "Accept", "Content-Type" and "User-Agent") will be cleared
-    /// (set to nil) then the passed in HTTP parameters will be set (or replaced).
+    /// The header fields set using this parameter will be added to the existing headers.
     ///
     /// ### Usage Example: ###
     ///
     /// ```swift
-    /// request.headerParameters = ["Cookie" : "v1"]
+    /// request.headerParameters = HTTPHeaders([("Cookie", "v1")])
     /// ```
     public var headerParameters: HTTPHeaders {
         get {
@@ -279,7 +276,7 @@ public class RestRequest {
     ///
     /// ### Usage Example: ###
     /// ```swift
-    /// let request = RestRequest(method: .get, url: "http://myApiCall/hello")
+    /// let request = RestRequest(method: .GET, url: "http://myApiCall/hello")
     /// ```
     ///
     /// - Parameters:
@@ -291,31 +288,23 @@ public class RestRequest {
 
         self.isSecure = url.hasPrefix("https")
         self.isSelfSigned = containsSelfSignedCert
-//        self.clientCertificate = clientCertificate
 
-        do {
-            // Instantiate basic mutable request
-            if url.contains("{") {
-                // Is a template URL which is not valid and will be replaced so use temporary value
-                self.request = try HTTPClient.Request(url: "http://template")
-                self.urlTemplate = url
-            } else {
-                self.request = try HTTPClient.Request(url: url)
-            }
-        } catch {
-            // Shut down session if failed init
-            try session.syncShutdown()
-            throw error
+        // Instantiate basic mutable request
+        if url.contains("{") {
+            // Is a template URL which is not valid and will be replaced so use temporary value
+            self.request = try HTTPClient.Request(url: "http://template")
+            self.urlTemplate = url
+        } else {
+            self.request = try HTTPClient.Request(url: url)
+        }
+        if containsSelfSignedCert {
+            self.session =  HTTPClient(eventLoopGroupProvider: .createNew, configuration: HTTPClient.Configuration(certificateVerification: .none))
+        } else {
+            self.session = HTTPClient(eventLoopGroupProvider: .createNew)
         }
 
         // Set initial fields
         self.url = url
-
-//        if isSecure && isSelfSigned {
-//            let config = URLSessionConfiguration.default
-//            config.requestCachePolicy = .reloadIgnoringLocalCacheData
-//            session = URLSession(configuration: config, delegate: self, delegateQueue: .main)
-//        }
         
         self.method = method
         self.acceptType = "application/json"
@@ -695,22 +684,6 @@ public class RestRequest {
         session.execute(request: request, delegate: delegate).future.whenComplete({ result in
             completionHandler(result)
         })
-//        
-//        let task = session.downloadTask(with: request) { (source, response, error) in
-//            do {
-//                guard let source = source else {
-//                    throw RestError.invalidFile
-//                }
-//                let fileManager = FileManager.default
-//                try fileManager.moveItem(at: source, to: destination)
-//
-//                completionHandler(response as? HTTPURLResponse, error)
-//
-//            } catch {
-//                completionHandler(nil, RestError.fileManagerError)
-//            }
-//        }
-//        task.resume()
     }
 
     /// Method used by `CircuitBreaker` as the contextCommand.
@@ -817,92 +790,21 @@ public struct CircuitParameters<A> {
     }
 }
 
-/// Enum used to specify the type of authentication being used.
-public enum Credentials {
-    /// An API key is being used, no additional data needed.
-    case apiKey
+/// Struct used to specify the type of authentication being used.
+public struct Credentials {
+    
+    let authheader: String
 
     /// Note: The bearer token should be base64 encoded.
-    case bearerAuthentication(token: String)
+    public static func bearerAuthentication(token: String) -> Credentials {
+        return Credentials(authheader: "Bearer \(token)")
+    }
+    
 
     /// A basic username/password authentication is being used with the values passed in.
-    case basicAuthentication(username: String, password: String)
+    public static func basicAuthentication(username: String, password: String) -> Credentials {
+        let authData = Data((username + ":" + password).utf8)
+        let authString = authData.base64EncodedString()
+        return Credentials(authheader: "Basic \(authString)")
+    }
 }
-
-//// URL Session extension
-//extension RestRequest: URLSessionDelegate {
-//
-//    /// URL session function to allow trusting certain URLs.
-//    public func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-//        let method = challenge.protectionSpace.authenticationMethod
-//        let host = challenge.protectionSpace.host
-//
-//        guard let url = URLComponents(string: self.url), let baseHost = url.host else {
-//            completionHandler(.performDefaultHandling, nil)
-//            return
-//        }
-//        
-//        let warning = "Attempting to establish a secure connection; This is only supported by macOS 10.6 or higher. Resorting to default handling."
-//
-//        switch (method, host) {
-//        case (NSURLAuthenticationMethodClientCertificate, baseHost):
-//            #if os(macOS)
-//            guard let certificateName = self.clientCertificate?.name, let certificatePath = self.clientCertificate?.path else {
-//                Log.warning(warning)
-//                fallthrough
-//            }
-//            // Get the bundle path from the Certificates directory for a certificate that matches clientCertificateName's name
-//            if let path = Bundle.path(forResource: certificateName, ofType: "der", inDirectory: certificatePath) {
-//                // Read the certificate data from disk
-//                if let key = NSData(base64Encoded: path) {
-//                    // Create a secure certificate from the NSData
-//                    if let certificate = SecCertificateCreateWithData(kCFAllocatorDefault, key) {
-//                        // Create a secure identity from the certificate
-//                        var identity: SecIdentity? = nil
-//                        let _: OSStatus = SecIdentityCreateWithCertificate(nil, certificate, &identity)
-//                        guard let id = identity else {
-//                            Log.warning(warning)
-//                            fallthrough
-//                        }
-//                        completionHandler(.useCredential, URLCredential(identity: id, certificates: [certificate], persistence: .forSession))
-//                    }
-//                }
-//            }
-//            #else
-//            Log.warning(warning)
-//            fallthrough
-//            #endif
-//        case (NSURLAuthenticationMethodServerTrust, baseHost):
-//            #if !os(Linux)
-//            guard #available(iOS 3.0, macOS 10.6, *), let trust = challenge.protectionSpace.serverTrust else {
-//                Log.warning(warning)
-//                fallthrough
-//            }
-//
-//            let credential = URLCredential(trust: trust)
-//            completionHandler(.useCredential, credential)
-//
-//            #else
-//            Log.warning(warning)
-//            fallthrough
-//            #endif
-//        default:
-//            completionHandler(.performDefaultHandling, nil)
-//        }
-//    }
-//
-//}
-//
-///// Represents a reference to a client certificate.
-//public struct ClientCertificate {
-//    /// The name for the client certificate.
-//    public let name: String
-//    /// The path to the client certificate.
-//    public let path: String
-//
-//    /// Initialize a `ClientCertificate` instance.
-//    public init(name: String, path: String) {
-//      self.name = name
-//      self.path = path
-//    }
-//}

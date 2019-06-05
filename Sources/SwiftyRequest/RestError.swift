@@ -58,26 +58,6 @@ public struct RestError: Error, CustomStringConvertible, Equatable {
     public static func serializationError(response: HTTPClient.Response) -> RestError {
         return RestError(internalError: .serializationError, description: "Serialization Error", response: response)
     }
-//    
-//    /// Failure to encode data into a certain format.
-//    public static func encodingError(response: HTTPClient.Response) -> RestError {
-//        return RestError(internalError: .encodingError, description: "Encoding Error", response: response)
-//    }
-//    
-//    /// Failure in file manipulation.
-//    public static func fileManagerError(response: HTTPClient.Response) -> RestError {
-//        return RestError(internalError: .fileManagerError, description: "File Manager Error", response: response)
-//    }
-//    
-//    /// The file trying to be accessed is invalid.
-//    public static func invalidFile(response: HTTPClient.Response) -> RestError {
-//        return RestError(internalError: .invalidFile, description: "Invalid File", response: response)
-//    }
-//    
-//    /// The url substitution attempted could not be made.
-//    public static func invalidSubstitution(response: HTTPClient.Response) -> RestError {
-//        return RestError(internalError: .invalidSubstitution, description: "Invalid Data", response: response)
-//    }
     
     private let internalError: InternalError
     
@@ -96,17 +76,6 @@ public struct RestError: Error, CustomStringConvertible, Equatable {
     /// The HTTP response that caused the error.
     public let response: HTTPClient.Response?
     
-    //    {
-    //        switch self {
-    //        case .noData                        : return "No Data"
-    //        case .serializationError            : return "Serialization Error"
-    //        case .encodingError                 : return "Encoding Error"
-    //        case .fileManagerError              : return "File Manager Error"
-    //        case .invalidFile                   : return "Invalid File"
-    //        case .invalidSubstitution           : return "Invalid Data"
-    //        case .erroredResponseStatus(let s)  : return "Error HTTP Response: `\(s)`"
-    //        }
-    //    }
     
     /// Function to check if two RestError instances are equal. Required for Equatable protocol.
     public static func == (lhs: RestError, rhs: RestError) -> Bool {
