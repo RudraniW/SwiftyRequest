@@ -110,15 +110,6 @@ public class RestRequest {
             // set the request's authentication credentials
             if let credentials = credentials {
                 request.headers.replaceOrAdd(name: "Authorization", value: credentials.authheader)
-//                switch credentials {
-//                case .apiKey: break
-//                case .bearerAuthentication(let token):
-//                    request.headers.replaceOrAdd(name: "Authorization", value: "Bearer \(token)")
-//                case .basicAuthentication(let username, let password):
-//                    let authData = (username + ":" + password).data(using: .utf8)!
-//                    let authString = authData.base64EncodedString()
-//                    request.headers.replaceOrAdd(name: "Authorization", value: "Basic \(authString)")
-//                }
             } else {
                 request.headers.remove(name: "Authorization")
             }
