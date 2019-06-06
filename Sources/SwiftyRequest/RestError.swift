@@ -59,10 +59,15 @@ public struct RestError: Error, CustomStringConvertible, Equatable {
         return RestError(internalError: .serializationError, description: "Serialization Error", response: response)
     }
     
+    /// Data couldn't be parsed correctly.
+    public static func errorStatusCode(response: HTTPClient.Response) -> RestError {
+        return RestError(internalError: .errorStatusCode, description: "Got response with Status code outside of 200 range", response: response)
+    }
+    
     private let internalError: InternalError
     
     private enum InternalError {
-        case noData, serializationError, encodingError, decodingError, fileManagerError, invalidFile, invalidSubstitution, downloadError
+        case noData, serializationError, encodingError, decodingError, fileManagerError, invalidFile, invalidSubstitution, downloadError, errorStatusCode
     }
     
     /// Error Description

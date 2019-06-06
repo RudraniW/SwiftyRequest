@@ -316,7 +316,16 @@ public class RestRequest {
             breaker.run(commandArgs: (request, completionHandler), fallbackArgs: "Circuit is open")
         } else {
             self.session.execute(request: request).whenComplete { result in
-                completionHandler(result)
+                switch result {
+                case .success(let response):
+                    if response.status.code >= 200 && response.status.code < 300 {
+                        return completionHandler(.success(response))
+                    } else {
+                        return completionHandler(.failure(RestError.errorStatusCode(response: response)))
+                    }
+                case .failure(let error):
+                    return completionHandler(.failure(error))
+                }
             }
         }
     }
