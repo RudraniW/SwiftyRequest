@@ -195,6 +195,9 @@ public class RestRequest {
         }
     }
 
+    // Storage for message body
+    private var _messageBody: Data?
+    
     /// The HTTP message body, i.e. the body of the request.
     ///
     /// ### Usage Example: ###
@@ -203,22 +206,10 @@ public class RestRequest {
     /// ``
     public var messageBody: Data? {
         get {
-            switch request.body {
-            case .data(let body)?:
-                return body
-            case .string(let body)?:
-                return Data(body.utf8)
-            case .byteBuffer(let body)?:
-                if let bytes = body.getBytes(at: 0, length: body.readableBytes) {
-                    return Data(bytes)
-                } else {
-                    return nil
-                }
-            default:
-                return nil
-            }
+            return _messageBody
         }
         set {
+            _messageBody = newValue
             if let data = newValue {
                 request.body = .data(data)
             } else {
@@ -628,7 +619,7 @@ public class RestRequest {
             self.destination = destination
         }
         
-        func didTransmitRequestBody(task: HTTPClient.Task<HTTPResponseHead>) {
+        func didSendRequestHead(task: HTTPClient.Task<Response>, _ head: HTTPRequestHead) {
             // this is executed when request is sent, called once
             // Create a file in one doesn't exist
             do {
@@ -638,12 +629,21 @@ public class RestRequest {
             }
         }
         
-        func didReceiveHead(task: HTTPClient.Task<HTTPResponseHead>, _ head: HTTPResponseHead) {
-            // this is executed when we receive HTTP Reponse head part of the request (it contains response code and headers), called once
-            self.responseHead = head
+        func didSendRequestPart(task: HTTPClient.Task<Response>, _ part: IOData) {
+            // this is executed when request body part is sent, could be called zero or more times
         }
         
-        func didReceivePart(task: HTTPClient.Task<HTTPResponseHead>, _ buffer: ByteBuffer) {
+        func didSendRequest(task: HTTPClient.Task<Response>) {
+            // this is executed when request is fully sent, called once
+        }
+        
+        func didReceiveHead(task: HTTPClient.Task<Response>, _ head: HTTPResponseHead) -> EventLoopFuture<Void> {
+            // this is executed when we receive HTTP Reponse head part of the request (it contains response code and headers), called once
+            self.responseHead = head
+            return task.eventLoop.makeSucceededFuture(())
+        }
+        
+        func didReceivePart(task: HTTPClient.Task<Response>, _ buffer: ByteBuffer) -> EventLoopFuture<Void> {
             // this is executed when we receive parts of the response body, could be called zero or more times
             do {
                 let fileHandle = try FileHandle(forUpdating: destination)
@@ -653,6 +653,7 @@ public class RestRequest {
             } catch {
                 self.error = error
             }
+            return task.eventLoop.makeSucceededFuture(())
         }
         
         func didFinishRequest(task: HTTPClient.Task<HTTPResponseHead>) throws -> HTTPResponseHead {
@@ -681,7 +682,7 @@ public class RestRequest {
     public func download(to destination: URL, completionHandler: @escaping (Result<HTTPResponseHead, Error>) -> Void) {
         let delegate = DownloadDelegate(destination: destination)
         
-        session.execute(request: request, delegate: delegate).future.whenComplete({ result in
+        session.execute(request: request, delegate: delegate).futureResult.whenComplete({ result in
             completionHandler(result)
         })
     }
