@@ -29,7 +29,8 @@ public struct RestResponse<T> {
     public var status: HTTPResponseStatus
     /// The HTTP headers.
     public var headers: HTTPHeaders
+    /// The HTTP request that was sent to get this response.
+    public var request: HTTPClient.Request
     /// The body of the response as the expected type.
     public var body: T
-    
 }

@@ -45,13 +45,6 @@ public struct FriendData: Codable {
     let friends: [String]
 }
 
-//// Struct to hold arbitrary JSON response
-//public struct JSONResponse: JSONDecodable {
-//    public let json: [String: Any]
-//    public init(json: JSONWrapper) throws {
-//        self.json = try json.getDictionaryObject()
-//    }
-//}
 
 class SwiftyRequestTests: XCTestCase {
 
@@ -69,11 +62,11 @@ class SwiftyRequestTests: XCTestCase {
         ("testFileDownload", testFileDownload),
         ("testRequestUserAgent", testRequestUserAgent),
         ("testCircuitBreakResponseString", testCircuitBreakResponseString),
-        //("testCircuitBreakFailure", testCircuitBreakFailure),
+        ("testCircuitBreakFailure", testCircuitBreakFailure),
         ("testURLTemplateDataCall", testURLTemplateDataCall),
         ("testURLTemplateNoParams", testURLTemplateNoParams),
         ("testURLTemplateNoTemplateValues", testURLTemplateNoTemplateValues),
-        //("testQueryParamUpdating", testQueryParamUpdating),
+        ("testQueryParamUpdating", testQueryParamUpdating),
         ("testQueryParamUpdatingObject", testQueryParamUpdatingObject),
         ("testQueryTemplateParams", testQueryTemplateParams),
         ("testQueryTemplateParamsObject", testQueryTemplateParamsObject)
@@ -86,33 +79,6 @@ class SwiftyRequestTests: XCTestCase {
 
     // MARK: Helper methods
 
-//    private func responseToError(response: HTTPURLResponse?, data: Data?) -> Error? {
-//
-//        // First check http status code in response
-//        if let response = response {
-//            if response.statusCode >= 200 && response.statusCode < 300 {
-//                return nil
-//            }
-//        }
-//
-//        // ensure data is not nil
-//        guard let data = data else {
-//            if let code = response?.statusCode {
-//                print("Data is nil with response code: \(code)")
-//                return RestError.noData
-//            }
-//            return nil  // SwiftyRequest will generate error for this case
-//        }
-//
-//        do {
-//            let json = try JSONWrapper(data: data)
-//            let message = try json.getString(at: "error")
-//            print("Failed with error: \(message)")
-//            return RestError.serializationError
-//        } catch {
-//            return nil
-//        }
-//    }
 
     let failureFallback = { (error: BreakerError, msg: String) in
         // If this fallback is accessed, we consider it a failure
@@ -494,58 +460,58 @@ class SwiftyRequestTests: XCTestCase {
 
     }
 
-//    func testCircuitBreakFailure() {
-//
-//        let expectation = self.expectation(description: "CircuitBreaker max failure test")
-//        let name = "circuitName"
-//        let timeout = 500
-//        let resetTimeout = 3000
-//        let maxFailures = 2
-//        var count = 0
-//        var fallbackCalled = false
-//
-//        guard let request = try? RestRequest(url: "http://localhost:12345/blah") else {
-//            return XCTFail("Invalid URL")
-//        }
-//
-//        let breakFallback = { (error: BreakerError, msg: String) in
-//            /// After maxFailures, the circuit should be open
-//            if count == maxFailures {
-//                fallbackCalled = true
-//                XCTAssert(request.circuitBreaker?.breakerState == .open)
-//            }
-//        }
-//
-//        let circuitParameters = CircuitParameters(name: name, timeout: timeout, resetTimeout: resetTimeout, maxFailures: maxFailures, fallback: breakFallback)
-//
-//        request.circuitParameters = circuitParameters
-//
-//        let completionHandler = { (response: (Result<RestResponse<String>, Error>)) in
-//
-//            if fallbackCalled {
-//                expectation.fulfill()
-//            } else {
-//                count += 1
-//                XCTAssertLessThanOrEqual(count, maxFailures)
-//            }
-//        }
-//
-//        // Make multiple requests and ensure the correct callbacks are activated
-//        request.responseString() { response in
-//            completionHandler(response)
-//
-//            request.responseString(completionHandler: { response in
-//                completionHandler(response)
-//
-//                request.responseString(completionHandler: completionHandler)
-//                sleep(UInt32(resetTimeout/1000) + 1)
-//                request.responseString(completionHandler: completionHandler)
-//            })
-//        }
-//
-//        waitForExpectations(timeout: Double(resetTimeout) / 1000 + 10)
-//
-//    }
+    func testCircuitBreakFailure() {
+
+        let expectation = self.expectation(description: "CircuitBreaker max failure test")
+        let name = "circuitName"
+        let timeout = 500
+        let resetTimeout = 3000
+        let maxFailures = 2
+        var count = 0
+        var fallbackCalled = false
+
+        guard let request = try? RestRequest(url: "http://localhost:12345/blah") else {
+            return XCTFail("Invalid URL")
+        }
+
+        let breakFallback = { (error: BreakerError, msg: String) in
+            /// After maxFailures, the circuit should be open
+            if count == maxFailures {
+                fallbackCalled = true
+                XCTAssert(request.circuitBreaker?.breakerState == .open)
+            }
+        }
+
+        let circuitParameters = CircuitParameters(name: name, timeout: timeout, resetTimeout: resetTimeout, maxFailures: maxFailures, fallback: breakFallback)
+
+        request.circuitParameters = circuitParameters
+
+        let completionHandler = { (response: (Result<RestResponse<String>, Error>)) in
+
+            if fallbackCalled {
+                expectation.fulfill()
+            } else {
+                count += 1
+                XCTAssertLessThanOrEqual(count, maxFailures)
+            }
+        }
+
+        // Make multiple requests and ensure the correct callbacks are activated
+        request.responseString() { response in
+            completionHandler(response)
+
+            request.responseString(completionHandler: { response in
+                completionHandler(response)
+
+                request.responseString(completionHandler: completionHandler)
+                sleep(UInt32(resetTimeout/1000) + 1)
+                request.responseString(completionHandler: completionHandler)
+            })
+        }
+
+        waitForExpectations(timeout: Double(resetTimeout) / 1000 + 10)
+
+    }
 
     // MARK: Substitution Tests
 
@@ -667,91 +633,91 @@ class SwiftyRequestTests: XCTestCase {
 
     }
 
-//    // MARK: Query parameter tests
-//
-//    func testQueryParamUpdating() {
-//
-//        let expectation = self.expectation(description: "Test setting, modifying, and removing URL query parameters")
-//
-//        let circuitParameters = CircuitParameters(timeout: 3000, fallback: failureFallback)
-//        let initialQueryItems = [URLQueryItem(name: "friend", value: "bill")]
-//
-//        guard let request = try? RestRequest(url: friendsURL, containsSelfSignedCert: true) else {
-//            return XCTFail("Invalid URL")
-//        }
-//        
-//        request.circuitParameters = circuitParameters
-//
-//        // verify query has many parameters
-//        let completionHandlerFour = { (response: (Result<RestResponse<Data>, Error>)) in
-//            switch response {
-//            case .success(let result):
-//                XCTAssertGreaterThan(result.body.count, 0)
-//                XCTAssertNotNil(response.body.request?.url?.query)
-//                if let queryItems = response.body.request?.url?.query {
-//                    XCTAssertEqual(queryItems, "friend=brian&friend=george&friend=melissa%2Btempe&friend=mika")
-//                }
-//            case .failure(let error):
-//                XCTFail("Failed to get weather response data with error: \(error)")
-//            }
-//            expectation.fulfill()
-//        }
-//
-//        // verify query was set to nil
-//        let completionHandlerThree = { (response: (RestResponse<Data>)) in
-//            switch response.result {
-//            case .success(let result):
-//                XCTAssertGreaterThan(result.count, 0)
-//                XCTAssertNil(response.request?.url?.query)
-//                let queryItems = [URLQueryItem(name: "friend", value: "brian"), URLQueryItem(name: "friend", value: "george"), URLQueryItem(name: "friend", value: "melissa+tempe"), URLQueryItem(name: "friend", value: "mika")]
-//                request.responseData(queryItems: queryItems, completionHandler: completionHandlerFour)
-//            case .failure(let error):
-//                XCTFail("Failed to get weather response data with error: \(error)")
-//            }
-//        }
-//
-//        // verify query value changed and was encoded properly
-//        let completionHandlerTwo = { (response: (RestResponse<Data>)) in
-//            switch response.result {
-//            case .success(let result):
-//                XCTAssertGreaterThan(result.count, 0)
-//                XCTAssertNotNil(response.request?.url?.query)
-//                if let queryItems = response.request?.url?.query {
-//                    XCTAssertEqual(queryItems, "friend=darren%2Bfink")
-//                }
-//                // Explicitly remove query items before next request
-//                request.queryItems = nil
-//                request.responseData(completionHandler: completionHandlerThree)
-//            case .failure(let error):
-//                XCTFail("Failed to get weather response data with error: \(error)")
-//            }
-//        }
-//
-//        // verfiy query value could be set
-//        let completionHandlerOne = { (response: (RestResponse<Data>)) in
-//            switch response.result {
-//            case .success(let retVal):
-//                XCTAssertGreaterThan(retVal.count, 0)
-//                XCTAssertNotNil(response.request?.url?.query)
-//                if let queryItems = response.request?.url?.query {
-//                    XCTAssertEqual(queryItems, "friend=bill")
-//                }
-//
-//                request.responseData(queryItems: [URLQueryItem(name: "friend", value: "darren+fink")], completionHandler: completionHandlerTwo)
-//            case .failure(let error):
-//                XCTFail("Failed to get weather response data with error: \(error)")
-//            }
-//        }
-//
-//        // Set the query items for subsequent requests
-//        request.queryItems = initialQueryItems
-//
-//        // Do not explicitly pass `queryItems` - current configuration should be picked up
-//        request.responseData(completionHandler: completionHandlerOne)
-//
-//        waitForExpectations(timeout: 10)
-//
-//    }
+    // MARK: Query parameter tests
+
+    func testQueryParamUpdating() {
+
+        let expectation = self.expectation(description: "Test setting, modifying, and removing URL query parameters")
+
+        let circuitParameters = CircuitParameters(timeout: 3000, fallback: failureFallback)
+        let initialQueryItems = [URLQueryItem(name: "friend", value: "bill")]
+
+        guard let request = try? RestRequest(url: friendsURL, containsSelfSignedCert: true) else {
+            return XCTFail("Invalid URL")
+        }
+        
+        request.circuitParameters = circuitParameters
+
+        // verify query has many parameters
+        let completionHandlerFour = { (response: (Result<RestResponse<Data>, Error>)) in
+            switch response {
+            case .success(let result):
+                XCTAssertGreaterThan(result.body.count, 0)
+                XCTAssertNotNil(result.request.url.query)
+                if let queryItems = result.request.url.query {
+                    XCTAssertEqual(queryItems, "friend=brian&friend=george&friend=melissa%2Btempe&friend=mika")
+                }
+            case .failure(let error):
+                XCTFail("Failed to get weather response data with error: \(error)")
+            }
+            expectation.fulfill()
+        }
+
+        // verify query was set to nil
+        let completionHandlerThree = { (response: (Result<RestResponse<Data>, Error>)) in
+            switch response {
+            case .success(let result):
+                XCTAssertGreaterThan(result.body.count, 0)
+                XCTAssertNil(result.request.url.query)
+                let queryItems = [URLQueryItem(name: "friend", value: "brian"), URLQueryItem(name: "friend", value: "george"), URLQueryItem(name: "friend", value: "melissa+tempe"), URLQueryItem(name: "friend", value: "mika")]
+                request.responseData(queryItems: queryItems, completionHandler: completionHandlerFour)
+            case .failure(let error):
+                XCTFail("Failed to get weather response data with error: \(error)")
+            }
+        }
+
+        // verify query value changed and was encoded properly
+        let completionHandlerTwo = { (response: (Result<RestResponse<Data>, Error>)) in
+            switch response {
+            case .success(let result):
+                XCTAssertGreaterThan(result.body.count, 0)
+                XCTAssertNotNil(result.request.url.query)
+                if let queryItems = result.request.url.query {
+                    XCTAssertEqual(queryItems, "friend=darren%2Bfink")
+                }
+                // Explicitly remove query items before next request
+                request.queryItems = nil
+                request.responseData(completionHandler: completionHandlerThree)
+            case .failure(let error):
+                XCTFail("Failed to get weather response data with error: \(error)")
+            }
+        }
+
+        // verfiy query value could be set
+        let completionHandlerOne = { (response: (Result<RestResponse<Data>, Error>)) in
+            switch response {
+            case .success(let retVal):
+                XCTAssertGreaterThan(retVal.body.count, 0)
+                XCTAssertNotNil(retVal.request.url.query)
+                if let queryItems = retVal.request.url.query {
+                    XCTAssertEqual(queryItems, "friend=bill")
+                }
+
+                request.responseData(queryItems: [URLQueryItem(name: "friend", value: "darren+fink")], completionHandler: completionHandlerTwo)
+            case .failure(let error):
+                XCTFail("Failed to get weather response data with error: \(error)")
+            }
+        }
+
+        // Set the query items for subsequent requests
+        request.queryItems = initialQueryItems
+
+        // Do not explicitly pass `queryItems` - current configuration should be picked up
+        request.responseData(completionHandler: completionHandlerOne)
+
+        waitForExpectations(timeout: 10)
+
+    }
     
     func testQueryParamUpdatingObject() {
         

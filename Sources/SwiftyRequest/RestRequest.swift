@@ -362,6 +362,7 @@ public class RestRequest {
                 return completionHandler(.success(RestResponse(host: response.host,
                                                         status: response.status,
                                                         headers: response.headers,
+                                                        request: request,
                                                         body: Data(bodyBytes)))) 
             }
         }
@@ -410,6 +411,7 @@ public class RestRequest {
                     return completionHandler(.success(RestResponse(host: response.host,
                                                             status: response.status,
                                                             headers: response.headers,
+                                                            request: request,
                                                             body: object))) 
                 } catch {
                     return completionHandler(.failure(RestError.decodingError(error: error, response: response)))
@@ -462,6 +464,7 @@ public class RestRequest {
                 return completionHandler(.success(RestResponse(host: response.host,
                                                                status: response.status,
                                                                headers: response.headers,
+                                                               request: request,
                                                                body: object))) 
             }
         }
@@ -511,6 +514,7 @@ public class RestRequest {
                 return completionHandler(.success(RestResponse(host: response.host,
                                                                status: response.status,
                                                                headers: response.headers,
+                                                               request: request,
                                                                body: object))) 
             }
         }
@@ -564,6 +568,7 @@ public class RestRequest {
                 return completionHandler(.success(RestResponse(host: response.host,
                                                                status: response.status,
                                                                headers: response.headers,
+                                                               request: request,
                                                                body: object))) 
             }
         }
