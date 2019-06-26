@@ -66,7 +66,18 @@ public class RestRequest {
                                                 rollingWindow: params.rollingWindow,
                                                 bulkhead: params.bulkhead,
                                                 // We capture a weak reference to self to prevent a retain cycle from `handleInvocation` -> RestRequest` -> `circuitBreaker` -> `handleInvocation`. To do this we have explicitly declared the handleInvocation function as a closure.
-                                                command: { [weak self] invocation in self?.handleInvocation(invocation: invocation) },
+                                                command: { [weak self] invocation in
+                                                    self?.session.execute(request: invocation.commandArgs.0).whenComplete { result in
+                                                        switch result {
+                                                        case .failure(let error):
+                                                            invocation.notifyFailure(error: BreakerError(reason: error.localizedDescription))
+                                                        case .success(_):
+                                                            invocation.notifySuccess()
+                                                        }
+                                                        let callback = invocation.commandArgs.1
+                                                        callback(result)
+                                                    }
+                    },
                                                 fallback: params.fallback)
             }
         }
@@ -690,22 +701,6 @@ public class RestRequest {
         session.execute(request: request, delegate: delegate).futureResult.whenComplete({ result in
             completionHandler(result)
         })
-    }
-
-    /// Method used by `CircuitBreaker` as the contextCommand.
-    ///
-    /// - Parameter invocation: `Invocation` contains a command argument, `Void` return type, and a `String` fallback arguement.
-    private func handleInvocation(invocation: Invocation<(HTTPClient.Request, (Result<HTTPClient.Response, Error>) -> Void), String>) {
-        self.session.execute(request: invocation.commandArgs.0).whenComplete { result in
-            switch result {
-            case .failure(let error):
-                invocation.notifyFailure(error: BreakerError(reason: error.localizedDescription))
-            case .success(_):
-                invocation.notifySuccess()
-            }
-            let callback = invocation.commandArgs.1
-            callback(result)
-        }
     }
 
     /// Method to perform substitution on `String` URL if it contains templated placeholders
