@@ -67,7 +67,8 @@ public class RestRequest {
                                                 bulkhead: params.bulkhead,
                                                 // We capture a weak reference to self to prevent a retain cycle from `handleInvocation` -> RestRequest` -> `circuitBreaker` -> `handleInvocation`. To do this we have explicitly declared the handleInvocation function as a closure.
                                                 command: { [weak self] invocation in
-                                                    self?.session.execute(request: invocation.commandArgs.0).whenComplete { result in
+                                                    let request = invocation.commandArgs.0
+                                                    self?.session.execute(request: request).whenComplete { result in
                                                         switch result {
                                                         case .failure(let error):
                                                             invocation.notifyFailure(error: BreakerError(reason: error.localizedDescription))
