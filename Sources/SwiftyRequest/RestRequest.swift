@@ -17,7 +17,7 @@
 import Foundation
 import CircuitBreaker
 import LoggerAPI
-import NIOHTTPClient
+import AsyncHTTPClient
 import NIO
 import NIOHTTP1
 import NIOSSL

@@ -16,7 +16,7 @@
 
 import NIO
 import NIOHTTP1
-import NIOHTTPClient
+import AsyncHTTPClient
 
 /// Enum describing error types that can occur during a rest request and response.
 public struct RestError: Error, CustomStringConvertible, Equatable {

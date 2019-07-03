@@ -15,7 +15,7 @@
  **/
 
 import Foundation
-import NIOHTTPClient
+import AsyncHTTPClient
 import NIO
 import NIOHTTP1
 
